@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# openi — thin launcher for the Open-i terminal client (cli.py)
+#
+# Lets you run:      openi "dental anatomy"
+# from anywhere, once this file is on your PATH (see README, section
+# "2. The `openi` terminal command").
+#
+# It resolves its own real location (following symlinks), then runs cli.py
+# with the project's virtual-env Python if one exists, otherwise the system
+# Python 3. All arguments are forwarded untouched.
+
+set -euo pipefail
+
+# --- resolve the directory this script really lives in (handles symlinks) ---
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+
+# --- pick a Python interpreter: prefer the project venv ---------------------
+# Checks both POSIX venv layout (.venv/bin/python) and Windows venv layout
+# (.venv/Scripts/python.exe), since this script runs fine under Git Bash/WSL
+# on Windows too.
+if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+  PYTHON="$SCRIPT_DIR/.venv/bin/python"
+elif [ -x "$SCRIPT_DIR/venv/bin/python" ]; then
+  PYTHON="$SCRIPT_DIR/venv/bin/python"
+elif [ -x "$SCRIPT_DIR/.venv/Scripts/python.exe" ]; then
+  PYTHON="$SCRIPT_DIR/.venv/Scripts/python.exe"
+elif [ -x "$SCRIPT_DIR/venv/Scripts/python.exe" ]; then
+  PYTHON="$SCRIPT_DIR/venv/Scripts/python.exe"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON="python3"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON="python"
+else
+  echo "openi: could not find a Python 3 interpreter." >&2
+  exit 127
+fi
+
+exec "$PYTHON" "$SCRIPT_DIR/cli.py" "$@"

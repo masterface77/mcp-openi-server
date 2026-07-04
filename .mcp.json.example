@@ -1,0 +1,9 @@
+{
+  "//": "Copy this file to `.mcp.json` in your project root (or merge into it) so Claude Code auto-loads the Open-i server for anyone who opens this repo. Replace ABSOLUTE_PATH_TO with the real path where you cloned mcp-openi-server. On Windows use forward slashes or escaped backslashes.",
+  "mcpServers": {
+    "openi": {
+      "command": "ABSOLUTE_PATH_TO/mcp-openi-server/.venv/bin/python",
+      "args": ["ABSOLUTE_PATH_TO/mcp-openi-server/server.py"]
+    }
+  }
+}
