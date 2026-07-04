@@ -37,6 +37,17 @@ from openi_client import (
     search_openi,
 )
 
+# Force UTF-8 stdout/stderr. Windows consoles default to a legacy codepage
+# (e.g. cp1252), which cannot encode the accented characters, ellipsis (…) and
+# box-drawing separators this CLI prints — without this, every run crashes
+# with UnicodeEncodeError on Windows. Harmless no-op on platforms that are
+# already UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 # ANSI colours (auto-disabled when output is not a TTY, e.g. piped to a file).
 _USE_COLOR = sys.stdout.isatty()
 
