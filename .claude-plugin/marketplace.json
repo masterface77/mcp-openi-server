@@ -1,0 +1,18 @@
+{
+  "name": "openi-marketplace",
+  "owner": {
+    "name": "masterface77",
+    "url": "https://github.com/masterface77"
+  },
+  "metadata": {
+    "description": "Self-hosted marketplace for the Open-i (NLM) biomedical image search MCP server and CLI."
+  },
+  "plugins": [
+    {
+      "name": "openi",
+      "source": "./",
+      "description": "Search medical, clinical, radiological and dental images from Open-i (NLM) — no API key required.",
+      "version": "1.0.0"
+    }
+  ]
+}

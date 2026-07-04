@@ -1,18 +1,26 @@
-# mcp-openi-server
+# mcp-openi-server — Open-i Medical Image Search for Claude Code (MCP Server + CLI + Plugin)
 
-**Search medical, clinical, radiological and dental images from your terminal and from Claude Code — powered by [Open-i](https://openi.nlm.nih.gov) (the U.S. National Library of Medicine's Open Access Biomedical Image Search Engine).**
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-server-6C3BF3)](https://modelcontextprotocol.io)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757)](https://code.claude.com/docs/en/plugins)
 
-This repository gives you **three ways** to reach the same Open-i search engine, all sharing one tested core (`openi_client.py`):
+**Search medical, clinical, radiological and dental images from your terminal and from Claude Code — powered by [Open-i](https://openi.nlm.nih.gov) (the U.S. National Library of Medicine's Open Access Biomedical Image Search Engine).** No API key, no sign-up, no rate-limit token — Open-i is a fully public research API, and this project is the fastest way to query it from an AI coding agent or a shell.
+
+This repository gives you **four ways** to reach the same Open-i search engine, all sharing one tested core (`openi_client.py`):
 
 | # | Component | What it is | How you use it |
 |---|-----------|-----------|----------------|
-| 1 | **MCP server** (`server.py`) | A [Model Context Protocol](https://modelcontextprotocol.io) server exposing a `search_openi_images` tool. | Claude Code (or any MCP client) calls it **for you**, mid-conversation, and returns images as Markdown links. |
-| 2 | **`openi` CLI** (`cli.py` + `openi`) | A standalone terminal command. | You type `openi "dental anatomy"` and get results printed in your console — no chat needed. |
-| 3 | **Claude Code plugin config** | The `claude mcp add …` command + `.mcp.json`. | Installs component #1 so it is available in every Claude Code session automatically. |
+| 1 | **Claude Code plugin** | A `.claude-plugin/plugin.json` + self-hosted marketplace. | `/plugin marketplace add` + `/plugin install` — the recommended, one-command way to get the MCP tool in **every** Claude Code session. |
+| 2 | **MCP server** (`server.py`) | A [Model Context Protocol](https://modelcontextprotocol.io) server exposing a `search_openi_images` tool. | Claude Code (or any MCP client) calls it **for you**, mid-conversation, and returns images as Markdown links. |
+| 3 | **`openi` CLI** (`cli.py` + `openi`) | A standalone terminal command. | You type `openi "dental anatomy"` and get results printed in your console — no chat needed. |
+| 4 | **Manual `.mcp.json` / `claude mcp add`** | The classic, no-plugin way to wire up component #2. | Useful if you don't want to use the plugin/marketplace system, or need per-project config. |
 
 The Open-i API is **public and requires no API key**.
 
 > ℹ️ **API reference:** always double-check the parameters and codes against the official docs at **<https://openi.nlm.nih.gov/services>**. This project targets the `GET /api/search` endpoint documented there.
+
+> ⚠️ **Don't confuse Open-i with NCBI's E-utilities.** `openi.nlm.nih.gov` (this project's only dependency) genuinely needs **no key at all** — it's a fully open, unauthenticated REST endpoint. A *different*, related NLM service — the **NCBI E-utilities API** at `eutils.ncbi.nlm.nih.gov` / `www.ncbi.nlm.nih.gov` (used for things like PubMed/PMC full-text lookups) — **does** require (or strongly recommend) an API key for higher rate limits. This project never calls that API: the `article_url` field in each result is just a plain, human-clickable link built from the `pmcid` Open-i already returns (e.g. `https://www.ncbi.nlm.nih.gov/pmc/articles/PMC123456/`), not an authenticated API call. So: **no key needed anywhere in this repo**, today or if it grows — just be aware the two services are not the same thing if you extend this project to query NCBI directly.
 
 ---
 
@@ -22,9 +30,10 @@ The Open-i API is **public and requires no API key**.
 - [Requirements](#requirements)
 - [Windows notes](#windows-notes)
 - [Quick start (60 seconds)](#quick-start-60-seconds)
+- [0. Install as a Claude Code plugin (recommended)](#0-install-as-a-claude-code-plugin-recommended)
 - [1. The MCP server](#1-the-mcp-server)
 - [2. The `openi` terminal command](#2-the-openi-terminal-command)
-- [3. Install the server into Claude Code](#3-install-the-server-into-claude-code)
+- [3. Install the server into Claude Code (manual, no plugin)](#3-install-the-server-into-claude-code-manual-no-plugin)
 - [Using it inside Claude Code (let the agent do it for you)](#using-it-inside-claude-code-let-the-agent-do-it-for-you)
 - [Filter codes reference](#filter-codes-reference)
 - [The Portuguese → English translation rule](#the-portuguese--english-translation-rule)
@@ -49,9 +58,11 @@ Open-i indexes **figures, charts, X-rays, CT/MRI scans, ultrasound, histology an
 ## Requirements
 
 - **Python 3.10 or newer** (`python3 --version`)
-- **pip** and the ability to create a virtual environment (`python3 -m venv`)
-- Internet access to `https://openi.nlm.nih.gov`
-- *(Optional, for the Claude Code integration)* the **Claude Code CLI** — verify with `claude --version`
+- Internet access to `https://openi.nlm.nih.gov` (public, no API key/account needed)
+- The **Claude Code CLI** — verify with `claude --version`
+- **Either** of these, depending on which install path you pick:
+  - [`uv`](https://docs.astral.sh/uv/getstarted/installation) — for the [plugin install path](#0-install-as-a-claude-code-plugin-recommended) (recommended, no venv needed)
+  - **pip** + the ability to create a virtual environment (`python3 -m venv`) — for the [manual install path](#3-install-the-server-into-claude-code-manual-no-plugin)
 
 ---
 
@@ -73,6 +84,16 @@ Everything else (the `openi` command, `cli.py`, `server.py`) behaves identically
 
 ## Quick start (60 seconds)
 
+**Fastest path — install as a plugin (no venv, no manual `pip install`; requires [`uv`](https://docs.astral.sh/uv/)):**
+
+```bash
+claude plugin marketplace add masterface77/mcp-openi-server
+claude plugin install openi@openi-marketplace
+claude mcp list          # should show: plugin:openi:openi ... Connected
+```
+
+**Or, if you want the standalone CLI / manual install instead:**
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/masterface77/mcp-openi-server.git
@@ -91,6 +112,54 @@ claude mcp add openi -- "$(pwd)/.venv/bin/python" "$(pwd)/server.py"
 ```
 
 That's it. The rest of this README explains each piece in depth.
+
+---
+
+## 0. Install as a Claude Code plugin (recommended)
+
+This repository is itself a **Claude Code plugin** (`.claude-plugin/plugin.json`) *and* a **self-hosted marketplace** (`.claude-plugin/marketplace.json`) for that one plugin. This is the easiest, most portable way to get `search_openi_images` into Claude Code — no manual venv, no `pip install`, no absolute paths to configure. It works because the plugin's MCP entry uses [`uv run`](https://docs.astral.sh/uv/) with the `${CLAUDE_PLUGIN_ROOT}` variable (resolved automatically by Claude Code to wherever the plugin was installed), so `uv` fetches `mcp` and `httpx` into an ephemeral environment on first run — you never touch a venv.
+
+### Install (one-time)
+
+```bash
+# Add this repo as a marketplace (only needs to be done once)
+claude plugin marketplace add masterface77/mcp-openi-server
+
+# Install the "openi" plugin from it
+claude plugin install openi@openi-marketplace
+```
+
+You can run the same two commands **from inside an interactive Claude Code session** using the slash-command form instead:
+
+```text
+/plugin marketplace add masterface77/mcp-openi-server
+/plugin install openi@openi-marketplace
+```
+
+### Verify
+
+```bash
+claude plugin list        # shows: openi@openi-marketplace ... enabled
+claude mcp list            # shows: plugin:openi:openi ... Connected
+```
+
+Or, inside a session, run `/mcp` to see it listed as a connected server, and `/context` to confirm the plugin is loaded.
+
+### Requirements for the plugin path specifically
+
+- [`uv`](https://docs.astral.sh/uv/getstarted/installation) installed and on your `PATH` (the plugin's MCP server is launched via `uv run`, which needs `uv` itself — everything else, `uv` installs automatically on first launch).
+- No Python venv, no `pip install -r requirements.txt` needed for this path — `uv` handles `mcp` and `httpx` transparently, cached after the first run.
+
+### Updating / removing
+
+```bash
+claude plugin marketplace update openi-marketplace   # pull the latest plugin.json from GitHub
+claude plugin update openi                           # update the installed plugin
+claude plugin uninstall openi                        # remove it
+claude plugin marketplace remove openi-marketplace    # stop tracking this marketplace entirely
+```
+
+> Prefer the manual route (no plugin system, no marketplace)? Skip to [section 3](#3-install-the-server-into-claude-code-manual-no-plugin) — it still works exactly as before and is fully supported.
 
 ---
 
@@ -223,9 +292,11 @@ openi "mandible fracture" --json | jq '.results[].image_url'
 
 ---
 
-## 3. Install the server into Claude Code
+## 3. Install the server into Claude Code (manual, no plugin)
 
-This is the "plugin" step: make `search_openi_images` available in **every** Claude Code session.
+> If you already installed via [section 0](#0-install-as-a-claude-code-plugin-recommended), you can skip this — it's the same end result via a different mechanism.
+
+This is the manual way to make `search_openi_images` available in **every** Claude Code session, without using the plugin/marketplace system.
 
 ### The exact command
 
@@ -399,7 +470,9 @@ Common translations the agent uses:
 
 | Symptom | Fix |
 |---------|-----|
-| `claude mcp list` doesn't show `openi` | Re-run the `claude mcp add` command from **inside** the repo so `$(pwd)` resolves; check `claude mcp get openi`. |
+| `claude plugin install` fails / plugin not found | Run `claude plugin marketplace update openi-marketplace` first, then retry install. Confirm with `claude plugin marketplace list`. |
+| Plugin installed but `claude mcp list` shows no `plugin:openi:openi` | Make sure [`uv`](https://docs.astral.sh/uv/) is installed and on `PATH` (`uv --version`) — the plugin's MCP entry runs the server via `uv run`. |
+| `claude mcp list` doesn't show `openi` (manual/non-plugin install) | Re-run the `claude mcp add` command from **inside** the repo so `$(pwd)` resolves; check `claude mcp get openi`. |
 | Tool errors with *"Could not reach Open-i"* | Check your internet/proxy; confirm `https://openi.nlm.nih.gov` is reachable (`curl -I https://openi.nlm.nih.gov`). |
 | `ModuleNotFoundError: No module named 'mcp'` | You're not using the venv Python. Point Claude Code at `.venv/bin/python` (see section 3). |
 | No results | Ensure the query is **English**, broaden the terms, and drop `--type`/`--specialty` filters. |
@@ -412,13 +485,17 @@ Common translations the agent uses:
 
 ```
 mcp-openi-server/
+├── .claude-plugin/
+│   ├── plugin.json      # Plugin manifest — makes this repo installable via `claude plugin install`
+│   └── marketplace.json # Self-hosted marketplace listing the "openi" plugin (source: "./")
 ├── server.py            # MCP server (FastMCP, stdio) — the search "engine" for Claude Code
 ├── cli.py               # Standalone CLI implementation
 ├── openi                # Bash launcher so you can run `openi "…"` from anywhere
 ├── openi_client.py      # Shared core: API call + response parsing (used by both)
 ├── requirements.txt     # Runtime deps: mcp, httpx
 ├── pyproject.toml       # Packaging + `openi` console-script entry point
-├── .mcp.json.example    # Template to auto-load the server per project in Claude Code
+├── .mcp.json.example    # Template to auto-load the server per project in Claude Code (manual path)
+├── LICENSE              # MIT
 └── README.md            # This file
 ```
 

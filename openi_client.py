@@ -305,6 +305,10 @@ def _parse_item(item: dict[str, Any], max_summary_chars: int) -> OpeniImage:
         )
     )
     if not article_url:
+        # NOTE: this only builds a plain, human-clickable URL from the pmcid
+        # Open-i already gave us. It is NOT a call to the NCBI E-utilities API
+        # (eutils.ncbi.nlm.nih.gov), which is a separate NLM service that does
+        # require/recommend an API key. We never call that API here.
         pmcid = _first_str(item.get("pmcid"))
         if pmcid:
             article_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/"
