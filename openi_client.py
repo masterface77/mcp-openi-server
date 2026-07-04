@@ -124,10 +124,15 @@ class OpeniSearchResult:
 class OpeniError(Exception):
     """Raised when the Open-i API returns an error or is unreachable."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: Optional[int] = None,
+                 transient: bool = False):
         super().__init__(message)
         self.status_code = status_code
         self.message = message
+        # `transient` marks errors worth retrying with backoff: rate-limit
+        # throttles (HTTP 200 with a non-JSON/HTML body), 500s, and
+        # network/timeout blips. Callers use this to decide whether to retry.
+        self.transient = transient
 
 
 # --------------------------------------------------------------------------- #
@@ -341,8 +346,16 @@ def _handle_status(response: httpx.Response) -> dict[str, Any]:
     if status == 200:
         try:
             return response.json()
-        except ValueError as exc:  # pragma: no cover - defensive
-            raise OpeniError(f"Open-i returned status 200 but invalid JSON: {exc}", 200)
+        except ValueError:
+            # Open-i throttles rapid sequential requests by replying HTTP 200
+            # with an empty or HTML body instead of JSON. Treat this as a
+            # transient rate-limit so callers back off and retry rather than
+            # surfacing a confusing "invalid JSON" error.
+            raise OpeniError(
+                "Open-i replied 200 without JSON (likely rate-limited — it "
+                "throttles rapid requests). Wait a few seconds and retry.",
+                200, transient=True,
+            )
 
     # The docs call out 400 (bad request) and 500 (server error) explicitly.
     snippet = _truncate(_clean_text(response.text), 200)
@@ -352,13 +365,23 @@ def _handle_status(response: httpx.Response) -> dict[str, Any]:
             f"Check the parameter values. Details: {snippet or 'none'}",
             400,
         )
+    if status in (429, 503):
+        raise OpeniError(
+            f"Open-i is rate-limiting or unavailable (HTTP {status}). "
+            f"Wait a few seconds and retry.",
+            status, transient=True,
+        )
     if status == 500:
         raise OpeniError(
             f"Open-i had an internal error (HTTP 500 - Server Error). "
             f"Try again shortly. Details: {snippet or 'none'}",
-            500,
+            500, transient=True,
         )
     raise OpeniError(f"Open-i returned unexpected HTTP {status}. Details: {snippet or 'none'}", status)
+
+
+# Backoff schedule (seconds) used when Open-i throttles or has a transient blip.
+_RETRY_BACKOFF = (5.0, 15.0, 30.0)
 
 
 async def search_openi_async(
@@ -373,22 +396,39 @@ async def search_openi_async(
     fields: Optional[str] = None,
     timeout: float = DEFAULT_TIMEOUT,
     max_summary_chars: int = 500,
+    retries: int = 3,
 ) -> OpeniSearchResult:
-    """Async search against Open-i. Used by the MCP server."""
+    """Async search against Open-i. Used by the MCP server.
+
+    Automatically retries with exponential backoff when Open-i rate-limits
+    (its throttle returns HTTP 200 without JSON) or has a transient blip.
+    """
+    import asyncio
+
     params = build_search_params(query, m, n, it, sp, at, coll, favor, fields)
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-    try:
-        async with httpx.AsyncClient(timeout=timeout, headers=headers,
-                                     follow_redirects=True) as client:
-            response = await client.get(SEARCH_ENDPOINT, params=params)
-    except httpx.TimeoutException as exc:
-        raise OpeniError(f"Open-i request timed out after {timeout}s: {exc}") from exc
-    except httpx.HTTPError as exc:
-        raise OpeniError(f"Could not reach Open-i: {exc}") from exc
-
-    data = _handle_status(response)
-    return parse_search_response(query, data, api_url=str(response.url),
-                                 max_summary_chars=max_summary_chars)
+    last_exc: Optional[OpeniError] = None
+    for attempt in range(retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout, headers=headers,
+                                         follow_redirects=True) as client:
+                response = await client.get(SEARCH_ENDPOINT, params=params)
+            data = _handle_status(response)
+            return parse_search_response(query, data, api_url=str(response.url),
+                                         max_summary_chars=max_summary_chars)
+        except httpx.TimeoutException as exc:
+            last_exc = OpeniError(f"Open-i request timed out after {timeout}s: {exc}",
+                                  transient=True)
+        except httpx.HTTPError as exc:
+            last_exc = OpeniError(f"Could not reach Open-i: {exc}", transient=True)
+        except OpeniError as exc:
+            last_exc = exc
+            if not exc.transient:
+                raise
+        if attempt < retries:
+            await asyncio.sleep(_RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)])
+    assert last_exc is not None
+    raise last_exc
 
 
 def search_openi(
@@ -403,19 +443,36 @@ def search_openi(
     fields: Optional[str] = None,
     timeout: float = DEFAULT_TIMEOUT,
     max_summary_chars: int = 500,
+    retries: int = 3,
 ) -> OpeniSearchResult:
-    """Synchronous search against Open-i. Used by the standalone CLI."""
+    """Synchronous search against Open-i. Used by the standalone CLI.
+
+    Automatically retries with exponential backoff when Open-i rate-limits
+    (its throttle returns HTTP 200 without JSON) or has a transient blip.
+    """
+    import time
+
     params = build_search_params(query, m, n, it, sp, at, coll, favor, fields)
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-    try:
-        with httpx.Client(timeout=timeout, headers=headers,
-                          follow_redirects=True) as client:
-            response = client.get(SEARCH_ENDPOINT, params=params)
-    except httpx.TimeoutException as exc:
-        raise OpeniError(f"Open-i request timed out after {timeout}s: {exc}") from exc
-    except httpx.HTTPError as exc:
-        raise OpeniError(f"Could not reach Open-i: {exc}") from exc
-
-    data = _handle_status(response)
-    return parse_search_response(query, data, api_url=str(response.url),
-                                 max_summary_chars=max_summary_chars)
+    last_exc: Optional[OpeniError] = None
+    for attempt in range(retries + 1):
+        try:
+            with httpx.Client(timeout=timeout, headers=headers,
+                              follow_redirects=True) as client:
+                response = client.get(SEARCH_ENDPOINT, params=params)
+            data = _handle_status(response)
+            return parse_search_response(query, data, api_url=str(response.url),
+                                         max_summary_chars=max_summary_chars)
+        except httpx.TimeoutException as exc:
+            last_exc = OpeniError(f"Open-i request timed out after {timeout}s: {exc}",
+                                  transient=True)
+        except httpx.HTTPError as exc:
+            last_exc = OpeniError(f"Could not reach Open-i: {exc}", transient=True)
+        except OpeniError as exc:
+            last_exc = exc
+            if not exc.transient:
+                raise
+        if attempt < retries:
+            time.sleep(_RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)])
+    assert last_exc is not None
+    raise last_exc
