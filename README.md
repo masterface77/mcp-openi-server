@@ -20,6 +20,7 @@ The Open-i API is **public and requires no API key**.
 
 - [What can I search for?](#what-can-i-search-for)
 - [Requirements](#requirements)
+- [Windows notes](#windows-notes)
 - [Quick start (60 seconds)](#quick-start-60-seconds)
 - [1. The MCP server](#1-the-mcp-server)
 - [2. The `openi` terminal command](#2-the-openi-terminal-command)
@@ -51,6 +52,22 @@ Open-i indexes **figures, charts, X-rays, CT/MRI scans, ultrasound, histology an
 - **pip** and the ability to create a virtual environment (`python3 -m venv`)
 - Internet access to `https://openi.nlm.nih.gov`
 - *(Optional, for the Claude Code integration)* the **Claude Code CLI** — verify with `claude --version`
+
+---
+
+## Windows notes
+
+This project is fully tested on Windows (Git Bash + PowerShell), with two small differences from the Linux/macOS commands used throughout this README:
+
+1. **Venv layout:** `python -m venv .venv` creates `.venv\Scripts\python.exe` on Windows, not `.venv/bin/python`. The `openi` launcher already detects both automatically — you only need to adjust the path yourself when typing a `claude mcp add`/`.mcp.json` command by hand.
+2. **`$(pwd)` substitution:** this only works in a POSIX-style shell (Git Bash, WSL). In PowerShell/cmd, write the absolute path directly instead:
+
+   ```powershell
+   # PowerShell — from inside the cloned repo
+   claude mcp add openi -s user -- "E:\path\to\mcp-openi-server\.venv\Scripts\python.exe" "E:\path\to\mcp-openi-server\server.py"
+   ```
+
+Everything else (the `openi` command, `cli.py`, `server.py`) behaves identically on Windows once the venv is created — console output is forced to UTF-8 internally, so accented characters and the `…` ellipsis print correctly even on a legacy `cp1252` terminal.
 
 ---
 
