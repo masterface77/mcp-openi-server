@@ -1,8 +1,8 @@
 {
   "name": "openi-marketplace",
   "owner": {
-    "name": "masterface77",
-    "url": "https://github.com/masterface77"
+    "name": "LeviReisJs",
+    "url": "https://github.com/LeviReisJs"
   },
   "metadata": {
     "description": "Self-hosted marketplace for the Open-i (NLM) biomedical image search MCP server and CLI."

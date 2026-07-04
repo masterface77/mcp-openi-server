@@ -5,7 +5,7 @@ description = "MCP server + CLI to search Open-i (NLM) biomedical/medical/dental
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "masterface77" }]
+authors = [{ name = "LeviReisJs" }]
 keywords = ["mcp", "openi", "nlm", "medical-images", "claude-code", "dental", "radiology"]
 
 dependencies = [
@@ -19,7 +19,7 @@ dependencies = [
 openi = "cli:main"
 
 [project.urls]
-Homepage = "https://github.com/masterface77/mcp-openi-server"
+Homepage = "https://github.com/LeviReisJs/mcp-openi-server"
 "Open-i API" = "https://openi.nlm.nih.gov/services"
 
 [build-system]

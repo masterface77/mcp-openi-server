@@ -85,32 +85,48 @@ Everything else (the `openi` command, `cli.py`, `server.py`) behaves identically
 
 ## Quick start (60 seconds)
 
-**Fastest path — install as a plugin (no venv, no manual `pip install`; requires [`uv`](https://docs.astral.sh/uv/)):**
+### Fastest path — install as a plugin
+
+No clone, no venv, no `pip install`. Just needs [`uv`](https://docs.astral.sh/uv/getstarted/installation) on your `PATH`. Run these three lines (in your shell **or** inside a Claude Code session as `/plugin ...`):
 
 ```bash
-claude plugin marketplace add masterface77/mcp-openi-server
+claude plugin marketplace add LeviReisJs/mcp-openi-server
 claude plugin install openi@openi-marketplace
-claude mcp list          # should show: plugin:openi:openi ... Connected
+claude mcp list          # should show: plugin:openi:openi ... ✓ Connected
 ```
 
-**Or, if you want the standalone CLI / manual install instead:**
+Then, in any Claude Code session, just ask — e.g. `/openi:medical-image dental anatomy` — or let Claude reach for it on its own. Done.
+
+### Or — standalone CLI / manual install
+
+Use this if you want the `openi` terminal command, or prefer not to use the plugin system.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/masterface77/mcp-openi-server.git
+git clone https://github.com/LeviReisJs/mcp-openi-server.git
 cd mcp-openi-server
 
 # 2. Create an isolated Python environment and install the two dependencies
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 # 3. Try the standalone CLI right away
 python cli.py "dental anatomy" -n 5
-
-# 4. Register the MCP server with Claude Code (see section 3 for details)
-claude mcp add openi -- "$(pwd)/.venv/bin/python" "$(pwd)/server.py"
 ```
+
+```bash
+# 4a. Register the MCP server with Claude Code — macOS / Linux / Git Bash:
+claude mcp add openi -s user -- "$(pwd)/.venv/bin/python" "$(pwd)/server.py"
+```
+
+```powershell
+# 4b. Register the MCP server with Claude Code — Windows PowerShell
+#     (run from inside the cloned repo; write out the absolute path):
+claude mcp add openi -s user -- "$PWD\.venv\Scripts\python.exe" "$PWD\server.py"
+```
+
+Verify either path with `claude mcp list` — you should see `openi ... ✓ Connected`.
 
 That's it. The rest of this README explains each piece in depth.
 
@@ -124,7 +140,7 @@ This repository is itself a **Claude Code plugin** (`.claude-plugin/plugin.json`
 
 ```bash
 # Add this repo as a marketplace (only needs to be done once)
-claude plugin marketplace add masterface77/mcp-openi-server
+claude plugin marketplace add LeviReisJs/mcp-openi-server
 
 # Install the "openi" plugin from it
 claude plugin install openi@openi-marketplace
@@ -133,7 +149,7 @@ claude plugin install openi@openi-marketplace
 You can run the same two commands **from inside an interactive Claude Code session** using the slash-command form instead:
 
 ```text
-/plugin marketplace add masterface77/mcp-openi-server
+/plugin marketplace add LeviReisJs/mcp-openi-server
 /plugin install openi@openi-marketplace
 ```
 

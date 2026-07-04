@@ -36,7 +36,7 @@ OPENI_BASE_URL = "https://openi.nlm.nih.gov"
 SEARCH_ENDPOINT = f"{OPENI_BASE_URL}/api/search"
 
 DEFAULT_TIMEOUT = 45.0  # seconds — openi.nlm.nih.gov can be slow/flaky under load
-USER_AGENT = "mcp-openi-server/1.0 (+https://github.com/masterface77/mcp-openi-server)"
+USER_AGENT = "mcp-openi-server/1.0 (+https://github.com/LeviReisJs/mcp-openi-server)"
 
 # Allowed parameter values, taken verbatim from the official OAS 2.0 spec at
 # https://openi.nlm.nih.gov/services . We do NOT hard-fail on unknown values

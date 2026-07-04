@@ -3,10 +3,10 @@
   "description": "Search medical, clinical, radiological and dental images from Open-i (U.S. National Library of Medicine) — no API key required.",
   "version": "1.0.0",
   "author": {
-    "name": "masterface77"
+    "name": "LeviReisJs"
   },
-  "homepage": "https://github.com/masterface77/mcp-openi-server",
-  "repository": "https://github.com/masterface77/mcp-openi-server",
+  "homepage": "https://github.com/LeviReisJs/mcp-openi-server",
+  "repository": "https://github.com/LeviReisJs/mcp-openi-server",
   "license": "MIT",
   "keywords": ["medical", "dental", "images", "nlm", "openi", "radiology", "research"],
   "mcpServers": {
