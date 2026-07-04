@@ -7,14 +7,15 @@
 
 **Search medical, clinical, radiological and dental images from your terminal and from Claude Code — powered by [Open-i](https://openi.nlm.nih.gov) (the U.S. National Library of Medicine's Open Access Biomedical Image Search Engine).** No API key, no sign-up, no rate-limit token — Open-i is a fully public research API, and this project is the fastest way to query it from an AI coding agent or a shell.
 
-This repository gives you **four ways** to reach the same Open-i search engine, all sharing one tested core (`openi_client.py`):
+This repository gives you **several ways** to reach the same Open-i search engine, all sharing one tested core (`openi_client.py`):
 
 | # | Component | What it is | How you use it |
 |---|-----------|-----------|----------------|
-| 1 | **Claude Code plugin** | A `.claude-plugin/plugin.json` + self-hosted marketplace. | `/plugin marketplace add` + `/plugin install` — the recommended, one-command way to get the MCP tool in **every** Claude Code session. |
-| 2 | **MCP server** (`server.py`) | A [Model Context Protocol](https://modelcontextprotocol.io) server exposing a `search_openi_images` tool. | Claude Code (or any MCP client) calls it **for you**, mid-conversation, and returns images as Markdown links. |
-| 3 | **`openi` CLI** (`cli.py` + `openi`) | A standalone terminal command. | You type `openi "dental anatomy"` and get results printed in your console — no chat needed. |
-| 4 | **Manual `.mcp.json` / `claude mcp add`** | The classic, no-plugin way to wire up component #2. | Useful if you don't want to use the plugin/marketplace system, or need per-project config. |
+| 1 | **Claude Code plugin** | A `.claude-plugin/plugin.json` + self-hosted marketplace, bundling the MCP server **and** an `/openi:medical-image` skill. | `/plugin marketplace add` + `/plugin install` — the recommended, one-command way to get the tool + skill in **every** Claude Code session. |
+| 2 | **`medical-image` skill** | A model-invocable Skill (`/openi:medical-image <topic>`). | The **quick way**: one slash command finds + returns (or embeds) the best image. Claude also triggers it on its own while writing notes. |
+| 3 | **MCP server** (`server.py`) | A [Model Context Protocol](https://modelcontextprotocol.io) server exposing a `search_openi_images` tool. | Claude Code (or any MCP client) calls it **for you**, mid-conversation, and returns images as Markdown links. |
+| 4 | **`openi` CLI** (`cli.py` + `openi`) | A standalone terminal command. | You type `openi "dental anatomy"` and get results printed in your console — no chat needed. |
+| 5 | **Manual `.mcp.json` / `claude mcp add`** | The classic, no-plugin way to wire up component #3. | Useful if you don't want to use the plugin/marketplace system, or need per-project config. |
 
 The Open-i API is **public and requires no API key**.
 
@@ -369,7 +370,21 @@ claude mcp remove openi
 
 ## Using it inside Claude Code (let the agent do it for you)
 
-Once installed, **you don't call any command** — you just ask in natural language, and Claude Code decides to use the tool and hands you back an image. Try prompts like:
+### The quick way: the `/openi:medical-image` skill
+
+When you install this as a [plugin](#0-install-as-a-claude-code-plugin-recommended), it ships a **Skill** called `medical-image`. That gives you a fast, explicit way to trigger an image search without describing the whole workflow every time:
+
+```text
+/openi:medical-image radiografia panorâmica de fratura de mandíbula
+```
+
+Claude runs the skill, which tells it to: translate the term to English, pick the right image-type filter, call `search_openi_images`, choose the most relevant result, and hand it back as a ready-to-paste Markdown image with a `[Fonte]` link. The skill also knows how to **place the image directly into a note** when you're working in a notes vault (e.g. Obsidian) — right under the relevant heading, with the citation kept — and can download it for offline use if your vault syncs to a phone/tablet.
+
+Because it's model-invocable, Claude will also reach for the skill on its own when you're writing study notes and a figure would help — you don't have to type the slash command.
+
+### Or just ask in natural language
+
+You never *have* to call any command — just ask, and Claude Code decides to use the tool and hands you back an image. Try prompts like:
 
 > **"Search Open-i for a diagram of dental anatomy and show me the best image."**
 
@@ -488,6 +503,9 @@ mcp-openi-server/
 ├── .claude-plugin/
 │   ├── plugin.json      # Plugin manifest — makes this repo installable via `claude plugin install`
 │   └── marketplace.json # Self-hosted marketplace listing the "openi" plugin (source: "./")
+├── skills/
+│   └── medical-image/
+│       └── SKILL.md     # The `/openi:medical-image` skill (quick find + embed)
 ├── server.py            # MCP server (FastMCP, stdio) — the search "engine" for Claude Code
 ├── cli.py               # Standalone CLI implementation
 ├── openi                # Bash launcher so you can run `openi "…"` from anywhere
