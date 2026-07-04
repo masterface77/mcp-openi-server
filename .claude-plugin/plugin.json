@@ -1,7 +1,7 @@
 {
   "name": "openi",
   "description": "Search medical, clinical, radiological and dental images from Open-i (U.S. National Library of Medicine) — no API key required.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "LeviReisJs"
   },
